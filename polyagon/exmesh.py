@@ -78,6 +78,21 @@ device = mfem.Device('cpu')
 if myid == 0:
     device.Print()
 
+# Initialize visualization socket
+if (visualization):
+    mode_sock = mfem.socketstream("localhost", 19916)
+    mode_sock.precision(8)
+
+
+
+# Main Loop
+maxIterations = 100
+
+# Temp Var
+xVal = 3.0
+for numIter in range(maxIterations):
+
+
 # 3. Read the mesh from the given mesh file on all processors. We can handle
 #    triangular, quadrilateral, tetrahedral, hexahedral, surface and volume
 #    meshes with the same code
@@ -85,57 +100,59 @@ if myid == 0:
 # mesh = mfem.Mesh(meshfile, 1, 1)
 
 # TODO add variables to CLI arguments
-numVert = 6
-numElem = 5
-numBdrElem = 5
+    numVert = 6
+    numElem = 5
+    numBdrElem = 5
 
 # TODO Write Class to produce randomish Polygons
-mesh = mfem.Mesh(2, numVert, numElem, numBdrElem)
-mesh.AddVertex(0.0,0.0)
-mesh.AddVertex(1.0,0.0)
-mesh.AddVertex(0.31,0.95)
-mesh.AddVertex(-0.81, 0.59)
-mesh.AddVertex(-0.81, -0.59)
-mesh.AddVertex(0.31, -0.95)
+    mesh = mfem.Mesh(2, numVert, numElem, numBdrElem)
+    mesh.AddVertex(0.0,0.0)
+    mesh.AddVertex(xVal,0.0)
+    mesh.AddVertex(0.31,0.95)
+    mesh.AddVertex(-0.81, 0.59)
+    mesh.AddVertex(-0.81, -0.59)
+    mesh.AddVertex(0.31, -0.95)
 
+    # Temp Update for Temp Var
+    xVal = xVal - 0.02
 # Add Elements
-mesh.AddTriangle(0,1,2)
-mesh.AddTriangle(0,2,3)
-mesh.AddTriangle(0,3,4)
-mesh.AddTriangle(0,4,5)
-mesh.AddTriangle(0,5,1)
+    mesh.AddTriangle(0,1,2)
+    mesh.AddTriangle(0,2,3)
+    mesh.AddTriangle(0,3,4)
+    mesh.AddTriangle(0,4,5)
+    mesh.AddTriangle(0,5,1)
 
 # Add Boundary
-mesh.AddBdrSegment(1,2)
-mesh.AddBdrSegment(2,3)
-mesh.AddBdrSegment(3,4)
-mesh.AddBdrSegment(4,5)
-mesh.AddBdrSegment(5,1)
+    mesh.AddBdrSegment(1,2)
+    mesh.AddBdrSegment(2,3)
+    mesh.AddBdrSegment(3,4)
+    mesh.AddBdrSegment(4,5)
+    mesh.AddBdrSegment(5,1)
 
 # Finalize the Mesh
-mesh.SetAttributes()
+    mesh.SetAttributes()
 # Might orient sides properly
 # mesh.Finalize(False,True)
 
 # Print mesh
-mesh.Print("test.mesh", 2)
+    mesh.Print("test.mesh", 2)
 
-dim = mesh.Dimension()
+    dim = mesh.Dimension()
 
 # 4. Refine the serial mesh on all processors to increase the resolution. In
 #    this example we do 'ref_levels' of uniform refinement (2 by default, or
 #    specified on the command line with -rs).
-for x in range(ser_ref_levels):
-    mesh.UniformRefinement()
+    for x in range(ser_ref_levels):
+        mesh.UniformRefinement()
 
 # 5. Define a parallel mesh by a partitioning of the serial mesh. Refine
 #    this mesh further in parallel to increase the resolution (1 time by
 #    default, or specified on the command line with -rp). Once the parallel
 #    mesh is defined, the serial mesh can be deleted.
-pmesh = mfem.ParMesh(MPI.COMM_WORLD, mesh)
-del mesh
-for l in range(par_ref_levels):
-    pmesh.UniformRefinement()
+    pmesh = mfem.ParMesh(MPI.COMM_WORLD, mesh)
+    del mesh
+    for l in range(par_ref_levels):
+        pmesh.UniformRefinement()
 
 
 
@@ -143,18 +160,18 @@ for l in range(par_ref_levels):
 # 6. Define a parallel finite element space on the parallel mesh. Here we
 #    use continuous Lagrange finite elements of the specified order. If
 #    order < 1, we instead use an isoparametric/isogeometric space.
-if order > 0:
-    fec = mfem.H1_FECollection(order, dim)
-elif pmesh.GetNodes():
-    fec = pmesh.GetNodes().OwnFEC()
-else:
-    fec = mfem.H1_FECollection(1, dim)
+    if order > 0:
+        fec = mfem.H1_FECollection(order, dim)
+    elif pmesh.GetNodes():
+        fec = pmesh.GetNodes().OwnFEC()
+    else:
+        fec = mfem.H1_FECollection(1, dim)
 
-fespace = mfem.ParFiniteElementSpace(pmesh, fec)
-fe_size = fespace.GlobalTrueVSize()
+    fespace = mfem.ParFiniteElementSpace(pmesh, fec)
+    fe_size = fespace.GlobalTrueVSize()
 
-if (myid == 0):
-    print('Number of unknowns: ' + str(fe_size))
+    if (myid == 0):
+        print('Number of unknowns: ' + str(fe_size))
 
 # 7. Set up the parallel bilinear forms a(.,.) and m(.,.) on the finite
 #    element space. The first corresponds to the Laplacian operator -Delta,
@@ -164,39 +181,39 @@ if (myid == 0):
 #    shift the Dirichlet eigenvalues out of the computational range. After
 #    serial and parallel assembly we extract the corresponding parallel
 #    matrices A and M.
-one = mfem.ConstantCoefficient(1.0)
+    one = mfem.ConstantCoefficient(1.0)
 
-ess_bdr = mfem.intArray()
-if pmesh.bdr_attributes.Size() != 0:
-    ess_bdr.SetSize(pmesh.bdr_attributes.Max())
-    ess_bdr.Assign(1)
+    ess_bdr = mfem.intArray()
+    if pmesh.bdr_attributes.Size() != 0:
+        ess_bdr.SetSize(pmesh.bdr_attributes.Max())
+        ess_bdr.Assign(1)
 
-a = mfem.ParBilinearForm(fespace)
-a.AddDomainIntegrator(mfem.DiffusionIntegrator(one))
-if pmesh.bdr_attributes.Size() == 0:
-    # Add a mass term if the mesh has no boundary, e.g. periodic mesh or
-    # closed surface.
-    a.AddDomainIntegrator(mfem.MassIntegrator(one))
+    a = mfem.ParBilinearForm(fespace)
+    a.AddDomainIntegrator(mfem.DiffusionIntegrator(one))
+    if pmesh.bdr_attributes.Size() == 0:
+        # Add a mass term if the mesh has no boundary, e.g. periodic mesh or
+        # closed surface.
+        a.AddDomainIntegrator(mfem.MassIntegrator(one))
 
-a.Assemble()
-a.EliminateEssentialBCDiag(ess_bdr, 1.0)
-a.Finalize()
+    a.Assemble()
+    a.EliminateEssentialBCDiag(ess_bdr, 1.0)
+    a.Finalize()
 
 
-m = mfem.ParBilinearForm(fespace)
-m.AddDomainIntegrator(mfem.MassIntegrator(one))
-m.Assemble()
+    m = mfem.ParBilinearForm(fespace)
+    m.AddDomainIntegrator(mfem.MassIntegrator(one))
+    m.Assemble()
 
 # shift the eigenvalue corresponding to eliminated dofs to a large value
-m.EliminateEssentialBCDiag(ess_bdr,  3.0e-300)
-m.Finalize()
+    m.EliminateEssentialBCDiag(ess_bdr,  3.0e-300)
+    m.Finalize()
 
-A = a.ParallelAssemble()
-M = m.ParallelAssemble()
+    A = a.ParallelAssemble()
+    M = m.ParallelAssemble()
 
-if use_strumpack:
-    import mfem.par.strumpack as strmpk
-    Arow = strmpk.STRUMPACKRowLocMatrix(A)
+    if use_strumpack:
+        import mfem.par.strumpack as strmpk
+        Arow = strmpk.STRUMPACKRowLocMatrix(A)
 
 
 # 8. Define and configure the LOBPCG eigensolver and the BoomerAMG
@@ -204,69 +221,67 @@ if use_strumpack:
 #    which define the generalized eigenproblem A x = lambda M x.
 #    We don't support SuperLU
 
-if use_strumpack:
-    args = ["--sp_hss_min_sep_size", "128", "--sp_enable_hss"]
-    strumpack = strmpk.STRUMPACKSolver(args, MPI.COMM_WORLD)
-    strumpack.SetPrintFactorStatistics(True)
-    strumpack.SetPrintSolveStatistics(False)
-    strumpack.SetKrylovSolver(strmpk.KrylovSolver_DIRECT)
-    strumpack.SetReorderingStrategy(strmpk.ReorderingStrategy_METIS)
-    strumpack.SetMC64Job(strmpk.MC64Job_NONE)
-    # strumpack.SetSymmetricPattern(True)
-    strumpack.SetOperator(Arow)
-    strumpack.SetFromCommandLine()
-    precond = strumpack
-else:
-    amg = mfem.HypreBoomerAMG(A)
-    amg.SetPrintLevel(0)
-    precond = amg
+    if use_strumpack:
+        args = ["--sp_hss_min_sep_size", "128", "--sp_enable_hss"]
+        strumpack = strmpk.STRUMPACKSolver(args, MPI.COMM_WORLD)
+        strumpack.SetPrintFactorStatistics(True)
+        strumpack.SetPrintSolveStatistics(False)
+        strumpack.SetKrylovSolver(strmpk.KrylovSolver_DIRECT)
+        strumpack.SetReorderingStrategy(strmpk.ReorderingStrategy_METIS)
+        strumpack.SetMC64Job(strmpk.MC64Job_NONE)
+        # strumpack.SetSymmetricPattern(True)
+        strumpack.SetOperator(Arow)
+        strumpack.SetFromCommandLine()
+        precond = strumpack
+    else:
+        amg = mfem.HypreBoomerAMG(A)
+        amg.SetPrintLevel(0)
+        precond = amg
 
-lobpcg = mfem.HypreLOBPCG(MPI.COMM_WORLD)
-lobpcg.SetNumModes(nev)
-lobpcg.SetPreconditioner(precond)
-lobpcg.SetMaxIter(200)
-lobpcg.SetTol(1e-8)
-lobpcg.SetPrecondUsageMode(1)
-lobpcg.SetPrintLevel(1)
-lobpcg.SetMassMatrix(M)
-lobpcg.SetOperator(A)
+    lobpcg = mfem.HypreLOBPCG(MPI.COMM_WORLD)
+    lobpcg.SetNumModes(nev)
+    lobpcg.SetPreconditioner(precond)
+    lobpcg.SetMaxIter(200)
+    lobpcg.SetTol(1e-8)
+    lobpcg.SetPrecondUsageMode(1)
+    lobpcg.SetPrintLevel(1)
+    lobpcg.SetMassMatrix(M)
+    lobpcg.SetOperator(A)
 
 # 9. Compute the eigenmodes and extract the array of eigenvalues. Define a
 #    parallel grid function to represent each of the eigenmodes returned by
 #    the solver.
-eigenvalues = mfem.doubleArray()
-lobpcg.Solve()
-lobpcg.GetEigenvalues(eigenvalues)
-x = mfem.ParGridFunction(fespace)
+    eigenvalues = mfem.doubleArray()
+    lobpcg.Solve()
+    lobpcg.GetEigenvalues(eigenvalues)
+    x = mfem.ParGridFunction(fespace)
 
 # 10. Save the refined mesh and the modes in parallel. This output can be
 #     viewed later using GLVis: "glvis -np <np> -m mesh -g mode".
 
-smyid = '{:0>6d}'.format(myid)
-mesh_name = "mesh."+smyid
-pmesh.Print(mesh_name, 8)
-
-for i in range(nev):
-    x.Assign(lobpcg.GetEigenvector(i))
-    sol_name = "mode_"+str(i).zfill(2)+"."+smyid
-    x.Save(sol_name, 8)
-
-# 11. Send the solution by socket to a GLVis server.
-if (visualization):
-    mode_sock = mfem.socketstream("localhost", 19916)
-    mode_sock.precision(8)
+    smyid = '{:0>6d}'.format(myid)
+    mesh_name = "mesh."+smyid
+    pmesh.Print(mesh_name, 8)
 
     for i in range(nev):
-        if (myid == 0):
-            print("Eigenmode " + str(i+1) + '/' + str(nev) +
-                  ", Lambda = " + str(eigenvalues[i]))
-
-        # convert eigenvector from HypreParVector to ParGridFunction
         x.Assign(lobpcg.GetEigenvector(i))
+        sol_name = "mode_"+str(i).zfill(2)+"."+smyid
+        x.Save(sol_name, 8)
 
-        mode_sock.send_text("parallel " + str(num_procs) + " " + str(myid))
-        mode_sock.send_solution(pmesh,   x)
-        mode_sock.send_text("window_title 'Eigenmode " + str(i+1) + '/' +
-                            str(nev) + ", Lambda = " + str(eigenvalues[i]) + "'")
+# 11. Send the solution by socket to a GLVis server.
+    if (visualization):
+        for i in range(nev):
+            if (myid == 0):
+                print("Eigenmode " + str(i+1) + '/' + str(nev) +
+                      ", Lambda = " + str(eigenvalues[i]))
 
+            # convert eigenvector from HypreParVector to ParGridFunction
+            x.Assign(lobpcg.GetEigenvector(i))
+
+            mode_sock.send_text("parallel " + str(num_procs) + " " + str(myid))
+            mode_sock.send_solution(pmesh,   x)
+            mode_sock.send_text("window_title 'Eigenmode " + str(i+1) + '/' +
+                                str(nev) + ", Lambda = " + str(eigenvalues[i]) + "'")
+
+if (visualization):
     mode_sock.close()
