@@ -1,0 +1,9 @@
+# Devops stuff
+.tox/*
+poetry.lock
+
+
+
+# Personal Notes
+TODO.md
+
