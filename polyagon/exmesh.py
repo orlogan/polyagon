@@ -85,31 +85,40 @@ if myid == 0:
 # mesh = mfem.Mesh(meshfile, 1, 1)
 
 # TODO add variables to CLI arguments
-numVert = 4
-numElem = 3
-numBdrElem = 3
+numVert = 6
+numElem = 5
+numBdrElem = 5
 
+# TODO Write Class to produce randomish Polygons
 mesh = mfem.Mesh(2, numVert, numElem, numBdrElem)
-mesh.AddVertex(0.0,0.0, 0.0)
-mesh.AddVertex(-0.50,0.50, 0.0)
-mesh.AddVertex(0.50,0.50, 0.0)
-mesh.AddVertex(0.0,-0.50, 0.0)
+mesh.AddVertex(0.0,0.0)
+mesh.AddVertex(1.0,0.0)
+mesh.AddVertex(0.31,0.95)
+mesh.AddVertex(-0.81, 0.59)
+mesh.AddVertex(-0.81, -0.59)
+mesh.AddVertex(0.31, -0.95)
 
 # Add Elements
-mesh.AddTriangle(0,2,1)
-mesh.AddTriangle(0,3,2)
-mesh.AddTriangle(0,1,3)
+mesh.AddTriangle(0,1,2)
+mesh.AddTriangle(0,2,3)
+mesh.AddTriangle(0,3,4)
+mesh.AddTriangle(0,4,5)
+mesh.AddTriangle(0,5,1)
 
 # Add Boundary
 mesh.AddBdrSegment(1,2)
 mesh.AddBdrSegment(2,3)
-mesh.AddBdrSegment(3,1)
+mesh.AddBdrSegment(3,4)
+mesh.AddBdrSegment(4,5)
+mesh.AddBdrSegment(5,1)
 
 # Finalize the Mesh
 mesh.SetAttributes()
+# Might orient sides properly
+# mesh.Finalize(False,True)
 
 # Print mesh
-mesh.Print("test.mesh", 8)
+mesh.Print("test.mesh", 2)
 
 dim = mesh.Dimension()
 
@@ -127,6 +136,9 @@ pmesh = mfem.ParMesh(MPI.COMM_WORLD, mesh)
 del mesh
 for l in range(par_ref_levels):
     pmesh.UniformRefinement()
+
+
+
 
 # 6. Define a parallel finite element space on the parallel mesh. Here we
 #    use continuous Lagrange finite elements of the specified order. If
