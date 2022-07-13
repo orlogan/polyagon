@@ -1,6 +1,5 @@
 # Devops stuff
 .tox/*
-poetry.lock
 
 
 
