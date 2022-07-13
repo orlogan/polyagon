@@ -1,7 +1,8 @@
 # Devops stuff
 .tox/*
 
-
+# Solutions Files
+solutions/*
 
 # Personal Notes
 TODO.md

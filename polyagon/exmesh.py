@@ -260,12 +260,12 @@ for numIter in range(maxIterations):
 #     viewed later using GLVis: "glvis -np <np> -m mesh -g mode".
 
     smyid = '{:0>6d}'.format(myid)
-    mesh_name = "mesh."+smyid
+    mesh_name = "solutions/mesh."+smyid
     pmesh.Print(mesh_name, 8)
 
     for i in range(nev):
         x.Assign(lobpcg.GetEigenvector(i))
-        sol_name = "mode_"+str(i).zfill(2)+"."+smyid
+        sol_name = "solutions/mode_"+str(i).zfill(2)+"."+smyid
         x.Save(sol_name, 8)
 
 # 11. Send the solution by socket to a GLVis server.
