@@ -84,6 +84,13 @@ vertices = np.array([
 
 # Main Loop
 for numIter in range(maxIterations):
+
+    # 0. Update Mesh
+    # NOTE: Very simple update example just for testing
+    stepSize = 0.01
+    vertices[1,0] = vertices[1,0] - stepSize
+
+
     # 1. Generate Mesh From initial Vertices
     mesh = mfem.Mesh(2, numVert, numElem, numBdrElem)
     mesh.AddVertex(vertices[0,0], vertices[0,1])
