@@ -165,7 +165,7 @@ for numIter in range(maxIterations):
     # --Dirichlet Eigenvalues-- out of the 
     # computational range
     #
-    # TODO: Compare this definition with the similar
+    # TODO: Compare this formulation with the similar
     # one used in the non-python files
     one = mfem.ConstantCoefficient(1.0)
 
@@ -257,6 +257,10 @@ for numIter in range(maxIterations):
     #   MAIN TODO: Write Gradient Descent using
     #   the derivative of the eigenvalues wrt verts
     #
+    # NOTE: The general outline is in the edp file, but I need to 
+    # Cross check with the derivative definitions
+
+    
 
 
     # 8. Save the refined mesh and modes in parallel
